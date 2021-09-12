@@ -1,4 +1,4 @@
-data/input_DEMs/*
+data/input_raster/*
 data/reference/*
 data/output/*
 data/cache/
