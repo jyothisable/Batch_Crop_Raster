@@ -4,9 +4,8 @@
 # Created Date: 11-09-2021 23:32:21
 # =============================================================================
 """
-The module has been build for croping given raster file in input_raster folder using a given raster/vector file as reference
+The module has been build for batch finding statistics of raster and saving it to a csv file
 """
-
 import os
 from pathlib import Path
 import csv
@@ -15,18 +14,36 @@ from datetime import datetime as d
 # change directory because the file is usually imported to grass gis
 os.chdir(os.path.dirname(__file__))
 
-clipRef = 'data/reference/clipRef.gpkg'
-gs.run_command('v.import', input=clipRef ,output='clipRef', overwrite=True)
-# limit computational region
-gs.run_command('r.mask' ,vect='clipRef')
+def saveOutput(inputFileName,fileNameInGrass):
+    '''
+    input input file name and output file name
+    save current output file as .tif in output folder and also append statistics of this file to a .csv file 
+    '''
+    # output results stats into CSV (can't append directly)
+    gs.run_command('r.univar', map=fileNameInGrass,
+                    output='data/cache/stats_cache.csv', separator='comma', overwrite=True, flags='te')
+    # read the last lines from cache file
+    with open('data/cache/stats_cache.csv', newline='') as cache_csv:
+        lastLine = cache_csv.read().splitlines()[-1]
+    # append it to permanent file
+    with open('data/output/stats.csv', 'a') as output_csv:
+        # save header initially
+        if os.stat('data/output/stats.csv').st_size == 0:
+            output_csv.writelines(
+                'day,time,non_null_cells,null_cells,min,max,range,mean,mean_of_abs,stddev,variance,coeff_var,sum,sum_abs,first_quart,median,third_quart,perc_90')
+        output_csv.write("\n")
+        output_csv.writelines(str(day)+','+str(time)+','+lastLine)
+
 
 files = Path('data/input_raster').glob('*.tif')
 for file in files:
     inputFileInfo = os.path.basename(file).split('_')
-    print(inputFileInfo)
-    date = inputFileInfo[1]
-    time = inputFileInfo[2]
-    # gs.run_command('r.in.gdal', input=file,output='input_raster', overwrite=True)
-    # gs.run_command('r.mapcalc' ,ex='clipped_raster = input_raster')
+    date = inputFileInfo[2]
+    day = date[:2]
+    time = inputFileInfo[3]
+    gs.run_command('r.in.gdal', input=file,output='solar_ins', flags='o' ,overwrite=True)
+    saveOutput(os.path.basename(file),'solar_ins')
+
+
 
 
